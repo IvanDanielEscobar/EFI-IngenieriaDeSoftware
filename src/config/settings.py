@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'api',
 ]
 
 MIDDLEWARE = [
@@ -59,6 +60,9 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOWED_CREDENTIALS = True
 
+# Modelo de usuario personalizado
+AUTH_USER_MODEL = 'api.Usuario'
+ 
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
