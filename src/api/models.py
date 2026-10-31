@@ -49,10 +49,7 @@ class Cliente(models.Model):
     def __str__(self):
         return f"{self.usuario.get_full_name() or self.usuario.username} - {self.dni_cuit}"
 
-
-
 # Clase Base y Managers para Eliminado Lógico
-
 
 class EliminadoLogicoQuerySet(models.QuerySet):
     def delete(self):
@@ -98,9 +95,7 @@ class EliminadoLogicoModel(models.Model):
         super().delete(using=using, keep_parents=keep_parents)
 
 
-# ==============================================================================
 # Modelos del Catálogo de Mueblería
-# ==============================================================================
 
 class Categoria(EliminadoLogicoModel):
     nombre = models.CharField(
