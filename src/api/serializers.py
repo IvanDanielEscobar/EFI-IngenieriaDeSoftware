@@ -60,6 +60,7 @@ class MuebleListSerializer(serializers.ModelSerializer):
     categoria = CategoriaSerializer(read_only=True)
     material = MaterialSerializer(read_only=True)
     caracteristicas = CaracteristicasSerializer(read_only=True)
+    total_vendido = serializers.IntegerField(read_only=True, required=False)
 
     class Meta:
         model = Mueble
@@ -69,6 +70,8 @@ class MuebleListSerializer(serializers.ModelSerializer):
             'descripcion',
             'categoria',
             'material',
+            'imagen',
+            'total_vendido',
             'caracteristicas',
             'fecha_creacion',
             'fecha_actualizacion',
