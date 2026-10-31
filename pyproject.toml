@@ -13,6 +13,7 @@ dependencies = [
     "djangorestframework>=3.18.3",
     "drf-spectacular>=0.30.0",
     "psycopg[binary]>=3.3.6",
+    "pillow>=13.0.0",
 ]
 
 [project.scripts]
