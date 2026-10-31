@@ -251,4 +251,229 @@ class Caracteristicas(models.Model):
     def __str__(self):
         return f"Características de {self.mueble.nombre}"
 
-    
+
+# Modelos de Transacción
+
+class Sucursal(EliminadoLogicoModel):
+    nombre = models.CharField(
+        max_length=120,
+        unique=True,
+        verbose_name="Nombre de la sucursal"
+    )
+    direccion = models.CharField(
+        max_length=200,
+        verbose_name="Dirección"
+    )
+    ciudad = models.CharField(
+        max_length=100,
+        default="Rio Cuarto",
+        verbose_name="Ciudad"
+    )
+    provincia = models.CharField(
+        max_length=100,
+        default="Cordoba",
+        verbose_name="Provincia"
+    )
+    telefono = models.CharField(
+        max_length=30,
+        blank=True,
+        null=True,
+        verbose_name="Teléfono de contacto"
+    )
+    email = models.EmailField(
+        blank=True,
+        null=True,
+        verbose_name="Email de contacto"
+    )
+    activa = models.BooleanField(
+        default=True,
+        verbose_name="Activa para operaciones"
+    )
+
+    class Meta:
+        verbose_name = "Sucursal"
+        verbose_name_plural = "Sucursales"
+        ordering = ['nombre']
+
+    def __str__(self):
+        return f"{self.nombre} ({self.ciudad})"
+
+
+class MetodoPago(EliminadoLogicoModel):
+    class TipoMetodo(models.TextChoices):
+        EFECTIVO = 'EFECTIVO', 'Efectivo'
+        TARJETA_DEBITO = 'TARJETA_DEBITO', 'Tarjeta de Débito'
+        TARJETA_CREDITO = 'TARJETA_CREDITO', 'Tarjeta de Crédito'
+        TRANSFERENCIA = 'TRANSFERENCIA', 'Transferencia Bancaria'
+        MERCADO_PAGO = 'MERCADO_PAGO', 'Mercado Pago'
+
+    nombre = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name="Nombre del método"
+    )
+    tipo = models.CharField(
+        max_length=30,
+        choices=TipoMetodo.choices,
+        default=TipoMetodo.TRANSFERENCIA,
+        verbose_name="Tipo de pago"
+    )
+    activo = models.BooleanField(
+        default=True,
+        verbose_name="Habilitado"
+    )
+    instrucciones = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Instrucciones para el cliente (ej. datos de CBU o alias)",
+        verbose_name="Instrucciones"
+    )
+
+    class Meta:
+        verbose_name = "Método de Pago"
+        verbose_name_plural = "Métodos de Pago"
+        ordering = ['nombre']
+
+    def __str__(self):
+        return f"{self.nombre} ({self.get_tipo_display()})"
+
+
+class Pedido(EliminadoLogicoModel):
+    class EstadoPedido(models.TextChoices):
+        PENDIENTE = 'PENDIENTE', 'Pendiente de Confirmación'
+        PAGADO = 'PAGADO', 'Pagado'
+        EN_PREPARACION = 'EN_PREPARACION', 'En Preparación'
+        ENVIADO = 'ENVIADO', 'Enviado'
+        ENTREGADO = 'ENTREGADO', 'Entregado'
+        CANCELADO = 'CANCELADO', 'Cancelado'
+
+    numero_pedido = models.PositiveIntegerField(
+        unique=True,
+        verbose_name="Número de pedido"
+    )
+    cliente = models.ForeignKey(
+        Cliente,
+        on_delete=models.PROTECT,
+        related_name='pedidos',
+        verbose_name="Cliente"
+    )
+    sucursal = models.ForeignKey(
+        Sucursal,
+        on_delete=models.PROTECT,
+        related_name='pedidos',
+        verbose_name="Sucursal de despacho"
+    )
+    metodo_pago = models.ForeignKey(
+        MetodoPago,
+        on_delete=models.PROTECT,
+        related_name='pedidos',
+        verbose_name="Método de pago"
+    )
+    estado = models.CharField(
+        max_length=30,
+        choices=EstadoPedido.choices,
+        default=EstadoPedido.PENDIENTE,
+        verbose_name="Estado"
+    )
+    direccion_entrega = models.CharField(
+        max_length=255,
+        verbose_name="Dirección de entrega"
+    )
+    total = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+        verbose_name="Monto total"
+    )
+    notas = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Notas del pedido"
+    )
+    fecha_creacion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de creación"
+    )
+    fecha_actualizacion = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Última actualización"
+    )
+
+    class Meta:
+        verbose_name = "Pedido"
+        verbose_name_plural = "Pedidos"
+        ordering = ['-fecha_creacion']
+
+    def save(self, *args, **kwargs):
+        if not self.numero_pedido:
+            ultimo = Pedido.todos_los_objetos.order_by('-numero_pedido').first()
+            self.numero_pedido = (ultimo.numero_pedido + 1) if ultimo and ultimo.numero_pedido else 1001
+        super().save(*args, **kwargs)
+
+    def actualizar_total(self):
+        """Recalcula el total del pedido sumando los subtotales de sus detalles."""
+        total = sum((d.subtotal for d in self.detalles.all()), Decimal('0.00'))
+        self.total = total
+        self.save(update_fields=['total'])
+        return self.total
+
+    def puede_cancelarse(self, horas_limite=24):
+        """Valida si el pedido puede cancelarse según las reglas de negocio (plazo y estado)."""
+        from django.utils import timezone
+        from datetime import timedelta
+        if self.estado == self.EstadoPedido.CANCELADO or self.eliminado_logico:
+            return False
+        if self.estado in [self.EstadoPedido.EN_ENVIO, self.EstadoPedido.ENTREGADO]:
+            return False
+        limite = self.fecha_creacion + timedelta(hours=horas_limite)
+        return timezone.now() <= limite
+
+    def __str__(self):
+        return f"Pedido #{self.numero_pedido} - {self.cliente}"
+
+
+class DetallePedido(models.Model):
+    pedido = models.ForeignKey(
+        Pedido,
+        on_delete=models.CASCADE,
+        related_name='detalles',
+        verbose_name="Pedido"
+    )
+    mueble = models.ForeignKey(
+        Mueble,
+        on_delete=models.PROTECT,
+        related_name='detalles_pedido',
+        verbose_name="Mueble"
+    )
+    cantidad = models.PositiveIntegerField(
+        default=1,
+        validators=[MinValueValidator(1)],
+        verbose_name="Cantidad"
+    )
+    precio_unitario = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.00'))],
+        verbose_name="Precio unitario"
+    )
+
+    class Meta:
+        verbose_name = "Detalle del Pedido"
+        verbose_name_plural = "Detalles del Pedido"
+        ordering = ['id']
+
+    @property
+    def subtotal(self):
+        return self.cantidad * self.precio_unitario
+
+    def save(self, *args, **kwargs):
+        # Si no se especificó precio unitario, congelar el precio actual del mueble
+        if (self.precio_unitario is None or self.precio_unitario == Decimal('0.00')) and hasattr(self.mueble, 'caracteristicas'):
+            self.precio_unitario = self.mueble.caracteristicas.precio
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.cantidad}x {self.mueble.nombre} (Pedido #{self.pedido.numero_pedido})"
+
+
