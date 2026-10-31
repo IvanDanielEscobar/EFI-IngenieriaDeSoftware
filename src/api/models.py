@@ -169,6 +169,12 @@ class Mueble(EliminadoLogicoModel):
         auto_now=True,
         verbose_name="Fecha de actualización"
     )
+    imagen = models.ImageField(
+        upload_to="media/",
+        null=True,
+        blank=True,
+        verbose_name="Imagen del mueble"
+    )
 
     class Meta:
         verbose_name = "Mueble"

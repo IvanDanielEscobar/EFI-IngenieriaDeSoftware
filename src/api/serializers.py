@@ -51,6 +51,7 @@ class MuebleSerializer(serializers.ModelSerializer):
             'material_nombre',
             'fecha_creacion',
             'fecha_actualizacion',
+            'imagen',
         ]
 
 
