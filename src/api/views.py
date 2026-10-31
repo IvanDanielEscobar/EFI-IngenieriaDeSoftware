@@ -1,4 +1,9 @@
 from rest_framework import viewsets, filters
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.db.models import Sum, Q, Value, IntegerField
+from django.db.models.functions import Coalesce
+
 from .models import (
     Categoria,
     Material,
@@ -7,6 +12,7 @@ from .models import (
     Cliente,
     Sucursal,
     MetodoPago,
+    Pedido,
 )
 from .serializers import (
     CategoriaSerializer,
@@ -73,11 +79,45 @@ class MuebleViewSet(viewsets.ModelViewSet):
         return queryset
     
     def get_serializer_class(self):
-        # Nested serializer exclusivo para list (get all)
-        if self.action == 'list':
+        # Nested serializer para list (get all) y para destacados
+        if self.action in ['list', 'destacados']:
             return MuebleListSerializer
         return MuebleSerializer
 
+    @action(detail=False, methods=['get'], url_path='destacados')
+    def destacados(self, request):
+        # Anota cada mueble con la suma de cantidades vendidas en pedidos validos
+        queryset = (
+            self.get_queryset()
+            .annotate(
+                total_vendido=Coalesce(
+                    Sum(
+                        'detalles_pedido__cantidad',
+                        filter=~Q(detalles_pedido__pedido__estado=Pedido.EstadoPedido.CANCELADO)
+                        & Q(detalles_pedido__pedido__eliminado_logico=False),
+                    ),
+                    Value(0),
+                    output_field=IntegerField(),
+                )
+            )
+            .filter(total_vendido__gt=0)
+            .order_by('-total_vendido', '-fecha_creacion')
+        )
+        # Fallback: si aun no se registraron ventas en la base de datos, mostrar los ultimos publicados
+        if not queryset.exists():
+            queryset = (
+                self.get_queryset()
+                .annotate(total_vendido=Value(0, output_field=IntegerField()))
+                .order_by('-fecha_creacion')
+            )
+        limite = request.query_params.get('limite', 5)
+        try:
+            limite = max(1, int(limite))
+        except ValueError:
+            limite = 5
+        muebles_destacados = queryset[:limite]
+        serializer = self.get_serializer(muebles_destacados, many=True)
+        return Response(serializer.data)
 
 # ViewSets de Soporte
 
