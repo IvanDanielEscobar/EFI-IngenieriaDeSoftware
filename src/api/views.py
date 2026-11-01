@@ -22,7 +22,7 @@ from .serializers import (
     MaterialSerializer,
     MuebleSerializer,
     MuebleListSerializer,
-    PedidoSerializer
+    PedidoSerializer,
     CaracteristicasSerializer,
     SucursalSerializer,
     MetodoPagoSerializer,
