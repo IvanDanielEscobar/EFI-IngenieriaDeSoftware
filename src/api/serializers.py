@@ -139,5 +139,6 @@ class ClienteSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'fecha_creacion']
 
-    def get_usuario_nombre_completo(self, obj):
+    @extend_schema_field(serializers.CharField)
+    def get_usuario_nombre_completo(self, obj) -> str:
         return obj.usuario.get_full_name() or obj.usuario.username
