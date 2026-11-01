@@ -1,7 +1,8 @@
-from rest_framework import viewsets, filters
+from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import IsAuthenticated
 from django.db.models import Sum, Q, Value, IntegerField
 from django.db.models.functions import Coalesce
 
@@ -15,14 +16,12 @@ from .models import (
     MetodoPago,
     Pedido,
     DetallePedido,
-    Pedido,
 )
 from .serializers import (
     CategoriaSerializer,
     MaterialSerializer,
     MuebleSerializer,
     MuebleListSerializer,
-    PedidoSerializer
     CaracteristicasSerializer,
     SucursalSerializer,
     MetodoPagoSerializer,
@@ -32,26 +31,51 @@ from .serializers import (
     DetallePedidoSerializer,
     DetallePedidoListSerializer,
 )
+from .permissions import IsEmpleadoOrPublicReadOnly, IsEmpleado
 from .pagination import MueblePagination, StandardResultsSetPagination
 
-class CategoriaViewSet(viewsets.ModelViewSet):
+
+class EliminadoLogicoDestroyMixin:
+    """
+    Control de borrado para modelos con baja lógica:
+    - Borrado estándar (DELETE): realiza baja lógica (instance.delete()), permitido a administradores.
+    - Borrado definitivo (DELETE con ?hard=true): eliminación física (instance.borrado_fisico()),
+      exclusivo para superadministradores (is_superuser).
+    """
+    def perform_destroy(self, instance):
+        hard_delete = self.request.query_params.get('hard', '').lower() in ('true', '1')
+        if hard_delete:
+            if not self.request.user.is_superuser:
+                raise PermissionDenied("La eliminación definitiva está restringida únicamente a superadministradores.")
+            if hasattr(instance, 'borrado_fisico'):
+                instance.borrado_fisico()
+            else:
+                instance.delete()
+        else:
+            instance.delete()
+
+
+class CategoriaViewSet(EliminadoLogicoDestroyMixin, viewsets.ModelViewSet):
     queryset = Categoria.objects.all()
     serializer_class = CategoriaSerializer
+    permission_classes = [IsEmpleadoOrPublicReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['nombre', 'descripcion']
     ordering = ['nombre']
 
 
-class MaterialViewSet(viewsets.ModelViewSet):
+class MaterialViewSet(EliminadoLogicoDestroyMixin, viewsets.ModelViewSet):
     queryset = Material.objects.all()
     serializer_class = MaterialSerializer
+    permission_classes = [IsEmpleadoOrPublicReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['nombre', 'descripcion']
     ordering = ['nombre']
 
 
-class MuebleViewSet(viewsets.ModelViewSet):
+class MuebleViewSet(EliminadoLogicoDestroyMixin, viewsets.ModelViewSet):
     pagination_class = MueblePagination
+    permission_classes = [IsEmpleadoOrPublicReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = [
         'nombre',
@@ -92,44 +116,12 @@ class MuebleViewSet(viewsets.ModelViewSet):
             return MuebleListSerializer
         return MuebleSerializer
 
-class PedidoViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = PedidoSerializer
-    pagination_class = MueblePagination  # cambiar a StandardResultsSetPagination cuando se mergee la otra rama
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = [
-        'numero_pedido',
-        'cliente__usuario__username',
-        'cliente__dni_cuit',
-        'direccion_entrega',
-    ]
-    ordering_fields = ['numero_pedido', 'fecha_creacion', 'total', 'estado']
-    ordering = ['-fecha_creacion']
-
-    def get_queryset(self):
-        # Pedido.objects excluye automáticamente los eliminados lógicamente (cancelados)
-        return Pedido.objects.all().select_related(
-            'cliente__usuario', 'sucursal', 'metodo_pago'
-        ).prefetch_related('detalles__mueble')
-
-    @action(detail=True, methods=['post'], url_path='cancelar')
-    def cancelar(self, request, pk=None):
-        pedido = self.get_object()
-        if not pedido.puede_cancelarse():
-            return Response(
-                {'detail': 'El pedido no puede cancelarse (estado no válido o plazo de 24 horas vencido).'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        pedido.cancelar()
-        return Response(
-            {
-                'detail': f'Pedido #{pedido.numero_pedido} cancelado correctamente.',
-                'pedido': PedidoSerializer(pedido).data,
-            },
-            status=status.HTTP_200_OK,
-        )
+    
     @action(detail=False, methods=['get'], url_path='destacados')
     def destacados(self, request):
-        # Anota cada mueble con la suma de cantidades vendidas en pedidos validos
+        """
+        Retorna los muebles más vendidos en base a pedidos válidos (no cancelados ni eliminados lógicamente).
+        """
         queryset = (
             self.get_queryset()
             .annotate(
@@ -146,7 +138,7 @@ class PedidoViewSet(viewsets.ReadOnlyModelViewSet):
             .filter(total_vendido__gt=0)
             .order_by('-total_vendido', '-fecha_creacion')
         )
-        # Fallback: si aun no se registraron ventas en la base de datos, mostrar los ultimos publicados
+        # Fallback: si aún no se registraron ventas en la BD, mostrar los últimos publicados
         if not queryset.exists():
             queryset = (
                 self.get_queryset()
@@ -162,15 +154,17 @@ class PedidoViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = self.get_serializer(muebles_destacados, many=True)
         return Response(serializer.data)
 
+
 # ViewSets de Soporte
 
-class SucursalViewSet(viewsets.ModelViewSet):
+class SucursalViewSet(EliminadoLogicoDestroyMixin, viewsets.ModelViewSet):
     """
-    CRUD para la gestion de sucursales.
-    Busqueda por nombre, ciudad, provincia y dirección.
+    CRUD para la gestión de sucursales.
+    Búsqueda por nombre, ciudad, provincia y dirección.
     """
     queryset = Sucursal.objects.all()
     serializer_class = SucursalSerializer
+    permission_classes = [IsEmpleadoOrPublicReadOnly]
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['nombre', 'ciudad', 'direccion', 'provincia', 'telefono']
@@ -178,13 +172,14 @@ class SucursalViewSet(viewsets.ModelViewSet):
     ordering = ['nombre']
 
 
-class MetodoPagoViewSet(viewsets.ModelViewSet):
+class MetodoPagoViewSet(EliminadoLogicoDestroyMixin, viewsets.ModelViewSet):
     """
-    CRUD para la gestion de metodos de pago.
-    Busqueda por nombre y tipo.
+    CRUD para la gestión de métodos de pago.
+    Búsqueda por nombre y tipo.
     """
     queryset = MetodoPago.objects.all()
     serializer_class = MetodoPagoSerializer
+    permission_classes = [IsEmpleadoOrPublicReadOnly]
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['nombre', 'tipo']
@@ -194,11 +189,12 @@ class MetodoPagoViewSet(viewsets.ModelViewSet):
 
 class ClienteViewSet(viewsets.ModelViewSet):
     """
-    CRUD para la administracion de clientes.
-    Optimiza la consulta de usuario con select_related y permite busquedas por dni, telefono o usuario.
+    CRUD para la administración de clientes.
+    Acceso restringido a empleados.
     """
     queryset = Cliente.objects.all().select_related('usuario')
     serializer_class = ClienteSerializer
+    permission_classes = [IsEmpleado]
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = [
@@ -216,18 +212,28 @@ class ClienteViewSet(viewsets.ModelViewSet):
 
 class CaracteristicasViewSet(viewsets.ModelViewSet):
     """
-    CRUD para las caracteristicas tecnicas, precio y stock de muebles.
-    Optimiza la relacion del mueble y permite ordenarlos por precio y stock.
+    CRUD para las características técnicas, precio y stock de muebles.
     """
     queryset = Caracteristicas.objects.all().select_related('mueble')
     serializer_class = CaracteristicasSerializer
+    permission_classes = [IsEmpleadoOrPublicReadOnly]
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['mueble__nombre', 'color']
     ordering_fields = ['precio', 'stock', 'alto', 'ancho', 'profundidad']
     ordering = ['precio']
 
-class PedidoViewSet(viewsets.ModelViewSet):
+
+# ViewSets de Transacciones y Pedidos
+
+class PedidoViewSet(EliminadoLogicoDestroyMixin, viewsets.ModelViewSet):
+    """
+    CRUD y gestión operativa de Pedidos.
+    - Seguridad: Sólo usuarios autenticados (IsAuthenticated).
+    - get_queryset(): Empleados ven todos los pedidos; clientes sólo ven sus propios pedidos.
+    """
+    queryset = Pedido.objects.all()
+    permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = [
@@ -241,20 +247,80 @@ class PedidoViewSet(viewsets.ModelViewSet):
     ordering = ['-fecha_creacion']
 
     def get_queryset(self):
-        return Pedido.objects.all().select_related(
+        user = self.request.user
+        queryset = Pedido.objects.all().select_related(
             'cliente__usuario',
             'sucursal',
             'metodo_pago',
         ).prefetch_related(
-            'detalles__mueble_categoria',
+            'detalles__mueble__categoria',
             'detalles__mueble__material'
         )
+
+        # Empleados y superusuarios ven la totalidad de los pedidos
+        if user.is_authenticated and user.es_empleado():
+            return queryset
+
+        # Clientes regulares únicamente acceden a sus propios pedidos
+        return queryset.filter(cliente__usuario=user)
+
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
             return PedidoListSerializer
         return PedidoSerializer
 
+    def perform_create(self, serializer):
+        user = self.request.user
+        if not user.es_empleado() and hasattr(user, 'perfil_cliente'):
+            serializer.save(cliente=user.perfil_cliente)
+        else:
+            serializer.save()
+
+    @action(detail=True, methods=['post'], url_path='cancelar')
+    def cancelar(self, request, pk=None):
+        """
+        Cancela un pedido y realiza su baja lógica.
+        Valida que el pedido pertenezca al usuario solicitante (o que sea empleado/admin)
+        y que se encuentre dentro del plazo y estado cancelable.
+        """
+        try:
+            pedido = Pedido.objects.get(pk=pk)
+        except Pedido.DoesNotExist:
+            return Response(
+                {'detail': 'Pedido no encontrado.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Validación de pertenencia: Solo el dueño del pedido o un empleado/admin puede cancelar
+        if not request.user.es_empleado() and pedido.cliente.usuario != request.user:
+            return Response(
+                {'detail': 'No tienes permiso para cancelar un pedido ajeno.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if not pedido.puede_cancelarse():
+            return Response(
+                {'detail': 'El pedido no puede cancelarse (estado no válido o plazo de 24 horas vencido).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        pedido.cancelar()
+        return Response(
+            {
+                'detail': f'Pedido #{pedido.numero_pedido} cancelado correctamente.',
+                'pedido': PedidoSerializer(pedido).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class DetallePedidoViewSet(viewsets.ModelViewSet):
+    """
+    CRUD para detalles individuales de pedidos.
+    Restringido a usuarios autenticados, filtrado por pertenencia de pedido.
+    """
+    queryset = DetallePedido.objects.all()
+    permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = [
@@ -263,11 +329,17 @@ class DetallePedidoViewSet(viewsets.ModelViewSet):
     ]
 
     def get_queryset(self):
-        return DetallePedido.objects.all().select_related(
+        user = self.request.user
+        queryset = DetallePedido.objects.all().select_related(
             'pedido',
             'mueble__categoria',
             'mueble__material'
         )
+
+        if user.is_authenticated and user.es_empleado():
+            return queryset
+
+        return queryset.filter(pedido__cliente__usuario=user)
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
