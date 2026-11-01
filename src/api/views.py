@@ -2,15 +2,32 @@ from rest_framework import viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Categoria, Material, Mueble, Pedido
+from django.db.models import Sum, Q, Value, IntegerField
+from django.db.models.functions import Coalesce
+
+from .models import (
+    Categoria,
+    Material,
+    Mueble,
+    Caracteristicas,
+    Cliente,
+    Sucursal,
+    MetodoPago,
+    Pedido,
+    Pedido,
+)
 from .serializers import (
     CategoriaSerializer,
     MaterialSerializer,
     MuebleSerializer,
     MuebleListSerializer,
     PedidoSerializer
+    CaracteristicasSerializer,
+    SucursalSerializer,
+    MetodoPagoSerializer,
+    ClienteSerializer,
 )
-from .pagination import MueblePagination
+from .pagination import MueblePagination, StandardResultsSetPagination
 
 class CategoriaViewSet(viewsets.ModelViewSet):
     queryset = Categoria.objects.all()
@@ -65,8 +82,8 @@ class MuebleViewSet(viewsets.ModelViewSet):
         return queryset
     
     def get_serializer_class(self):
-        # Nested serializer exclusivo para list (get all)
-        if self.action == 'list':
+        # Nested serializer para list (get all) y para destacados
+        if self.action in ['list', 'destacados']:
             return MuebleListSerializer
         return MuebleSerializer
 
@@ -105,3 +122,102 @@ class PedidoViewSet(viewsets.ReadOnlyModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
+    @action(detail=False, methods=['get'], url_path='destacados')
+    def destacados(self, request):
+        # Anota cada mueble con la suma de cantidades vendidas en pedidos validos
+        queryset = (
+            self.get_queryset()
+            .annotate(
+                total_vendido=Coalesce(
+                    Sum(
+                        'detalles_pedido__cantidad',
+                        filter=~Q(detalles_pedido__pedido__estado=Pedido.EstadoPedido.CANCELADO)
+                        & Q(detalles_pedido__pedido__eliminado_logico=False),
+                    ),
+                    Value(0),
+                    output_field=IntegerField(),
+                )
+            )
+            .filter(total_vendido__gt=0)
+            .order_by('-total_vendido', '-fecha_creacion')
+        )
+        # Fallback: si aun no se registraron ventas en la base de datos, mostrar los ultimos publicados
+        if not queryset.exists():
+            queryset = (
+                self.get_queryset()
+                .annotate(total_vendido=Value(0, output_field=IntegerField()))
+                .order_by('-fecha_creacion')
+            )
+        limite = request.query_params.get('limite', 5)
+        try:
+            limite = max(1, int(limite))
+        except ValueError:
+            limite = 5
+        muebles_destacados = queryset[:limite]
+        serializer = self.get_serializer(muebles_destacados, many=True)
+        return Response(serializer.data)
+
+# ViewSets de Soporte
+
+class SucursalViewSet(viewsets.ModelViewSet):
+    """
+    CRUD para la gestion de sucursales.
+    Busqueda por nombre, ciudad, provincia y dirección.
+    """
+    queryset = Sucursal.objects.all()
+    serializer_class = SucursalSerializer
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['nombre', 'ciudad', 'direccion', 'provincia', 'telefono']
+    ordering_fields = ['nombre', 'ciudad']
+    ordering = ['nombre']
+
+
+class MetodoPagoViewSet(viewsets.ModelViewSet):
+    """
+    CRUD para la gestion de metodos de pago.
+    Busqueda por nombre y tipo.
+    """
+    queryset = MetodoPago.objects.all()
+    serializer_class = MetodoPagoSerializer
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['nombre', 'tipo']
+    ordering_fields = ['nombre', 'tipo']
+    ordering = ['nombre']
+
+
+class ClienteViewSet(viewsets.ModelViewSet):
+    """
+    CRUD para la administracion de clientes.
+    Optimiza la consulta de usuario con select_related y permite busquedas por dni, telefono o usuario.
+    """
+    queryset = Cliente.objects.all().select_related('usuario')
+    serializer_class = ClienteSerializer
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = [
+        'usuario__username',
+        'usuario__email',
+        'usuario__first_name',
+        'usuario__last_name',
+        'dni_cuit',
+        'telefono',
+        'direccion',
+    ]
+    ordering_fields = ['fecha_creacion', 'usuario__username', 'dni_cuit']
+    ordering = ['-fecha_creacion']
+
+
+class CaracteristicasViewSet(viewsets.ModelViewSet):
+    """
+    CRUD para las caracteristicas tecnicas, precio y stock de muebles.
+    Optimiza la relacion del mueble y permite ordenarlos por precio y stock.
+    """
+    queryset = Caracteristicas.objects.all().select_related('mueble')
+    serializer_class = CaracteristicasSerializer
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['mueble__nombre', 'color']
+    ordering_fields = ['precio', 'stock', 'alto', 'ancho', 'profundidad']
+    ordering = ['precio']
