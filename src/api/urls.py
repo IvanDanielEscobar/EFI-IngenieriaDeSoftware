@@ -12,6 +12,8 @@ from .views import (
     MetodoPagoViewSet,
     ClienteViewSet,
     CaracteristicasViewSet,
+    PedidoViewSet,
+    DetallePedidoViewSet,
 )
 
 router = DefaultRouter()
@@ -22,6 +24,8 @@ router.register(r'sucursales', SucursalViewSet, basename='sucursal')
 router.register(r'metodos-pago', MetodoPagoViewSet, basename='metodopago')
 router.register(r'clientes', ClienteViewSet, basename='cliente')
 router.register(r'caracteristicas', CaracteristicasViewSet, basename='caracteristicas')
+router.register(r'pedidos', PedidoViewSet, basename='pedido')
+router.register(r'detalles-pedido', DetallePedidoViewSet, basename='detallepedido')
 
 urlpatterns = [
     # Endpoints de Autenticación SimpleJWT
