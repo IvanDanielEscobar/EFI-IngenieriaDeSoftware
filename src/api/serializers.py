@@ -8,6 +8,8 @@ from .models import (
     Cliente,
     Sucursal,
     MetodoPago,
+    Pedido,
+    DetallePedido
 )
 
 
@@ -141,3 +143,80 @@ class ClienteSerializer(serializers.ModelSerializer):
 
     def get_usuario_nombre_completo(self, obj):
         return obj.usuario.get_full_name() or obj.usuario.username
+
+class DetallePedidoSerializer(serializers.ModelSerializer):
+    subtotal = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    mueble_nombre = serializers.ReadOnlyField(source='mueble.nombre')
+
+    class Meta:
+        model = DetallePedido
+        fields = [
+            'id',
+            'pedido',
+            'mueble',
+            'mueble_nombre',
+            'cantidad',
+            'precio_unitario',
+            'subtotal',
+        ]
+        read_only_fields = ['id', 'precio_unitario']
+
+class DetallePedidoListSerializer(serializers.ModelSerializer):
+    mueble = MuebleSerializer(read_only=True)
+    subtotal = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = DetallePedido
+        fields = [
+            'id',
+            'mueble',
+            'cantidad',
+            'precio_unitario',
+            'subtotal',
+        ]
+
+class PedidoSerializer(serializers.ModelSerializer):
+    estado_display = serializers.CharField(source='get_estado_display', read_only=True)
+
+    class Meta:
+        model = Pedido
+        fields = [
+            'id',
+            'numero_pedido',
+            'cliente',
+            'sucursal',
+            'metodo_pago',
+            'estado',
+            'estado_display',
+            'direccion_entrega',
+            'total',
+            'notas',
+            'fecha_creacion',
+            'fecha_actualizacion',
+        ]
+        read_only_fields = ['id', 'numero_pedido', 'total', 'fecha_creacion', 'fecha_actualizacion']
+
+class PedidoListSerializer(serializers.ModelSerializer):
+    cliente = ClienteSerializer(read_only=True)
+    sucursal = SucursalSerializer(read_only=True)
+    metodo_pago = MetodoPagoSerializer(read_only=True)
+    detalles = DetallePedidoListSerializer(many=True, read_only=True)
+    estado_display = serializers.CharField(source='get_estado_display', read_only=True)
+
+    class Meta:
+        model = Pedido
+        fields = [
+            'id',
+            'numero_pedido',
+            'cliente',
+            'sucursal',
+            'metodo_pago',
+            'estado',
+            'estado_display',
+            'direccion_entrega',
+            'total',
+            'notas',
+            'detalles',
+            'fecha_creacion',
+            'fecha_actualizacion',
+        ]

@@ -7,6 +7,8 @@ from .models import (
     Cliente,
     Sucursal,
     MetodoPago,
+    Pedido,
+    DetallePedido,
 )
 from .serializers import (
     CategoriaSerializer,
@@ -17,6 +19,10 @@ from .serializers import (
     SucursalSerializer,
     MetodoPagoSerializer,
     ClienteSerializer,
+    PedidoSerializer,
+    PedidoListSerializer,
+    DetallePedidoSerializer,
+    DetallePedidoListSerializer,
 )
 from .pagination import MueblePagination, StandardResultsSetPagination
 
@@ -143,3 +149,50 @@ class CaracteristicasViewSet(viewsets.ModelViewSet):
     search_fields = ['mueble__nombre', 'color']
     ordering_fields = ['precio', 'stock', 'alto', 'ancho', 'profundidad']
     ordering = ['precio']
+
+class PedidoViewSet(viewsets.ModelViewSet):
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = [
+        'numero_pedido',
+        'cliente__usuario__username',
+        'cliente__dni_cuit',
+        'direccion_entrega',
+        'estado',
+    ]
+    ordering_fields = ['numero_pedido', 'fecha_creacion', 'total', 'estado']
+    ordering = ['-fecha_creacion']
+
+    def get_queryset(self):
+        return Pedido.objects.all().select_related(
+            'cliente__usuario',
+            'sucursal',
+            'metodo_pago',
+        ).prefetch_related(
+            'detalles__mueble_categoria',
+            'detalles__mueble__material'
+        )
+    def get_serializer_class(self):
+        if self.action in ['list', 'retrieve']:
+            return PedidoListSerializer
+        return PedidoSerializer
+
+class DetallePedidoViewSet(viewsets.ModelViewSet):
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = [
+        'pedido__numero_pedido',
+        'mueble__nombre',
+    ]
+
+    def get_queryset(self):
+        return DetallePedido.objects.all().select_related(
+            'pedido',
+            'mueble__categoria',
+            'mueble__material'
+        )
+
+    def get_serializer_class(self):
+        if self.action in ['list', 'retrieve']:
+            return DetallePedidoListSerializer
+        return DetallePedidoSerializer
