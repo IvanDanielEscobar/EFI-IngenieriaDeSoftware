@@ -63,6 +63,13 @@ class CategoriaViewSet(EliminadoLogicoDestroyMixin, viewsets.ModelViewSet):
     search_fields = ['nombre', 'descripcion']
     ordering = ['nombre']
 
+    # Acción de borrado físico restringida exclusivamente a superadmin
+    @action(detail=True, methods=['delete'], url_path='borrado-fisico', permission_classes=[SoloSuperadmin])
+    def borrado_fisico_endpoint(self, request, pk=None):
+        categoria = Categoria.todos_los_objetos.get(pk=pk)
+        categoria.borrado_fisico()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class MaterialViewSet(EliminadoLogicoDestroyMixin, viewsets.ModelViewSet):
     queryset = Material.objects.all()
