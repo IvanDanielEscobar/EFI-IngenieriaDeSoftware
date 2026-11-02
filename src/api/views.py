@@ -1,4 +1,7 @@
-from rest_framework import viewsets, filters
+from rest_framework import viewsets, filters, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from .permissions import PermisoCatalogo, SoloSuperadmin
 from .models import Categoria, Material, Mueble
 from .serializers import (
     CategoriaSerializer,
@@ -9,11 +12,19 @@ from .serializers import (
 from .pagination import MueblePagination
 
 class CategoriaViewSet(viewsets.ModelViewSet):
+    permission_classes = [PermisoCatalogo]
     queryset = Categoria.objects.all()
     serializer_class = CategoriaSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['nombre', 'descripcion']
     ordering = ['nombre']
+
+    # Acción de borrado físico restringida exclusivamente a superadmin
+    @action(detail=True, methods=['delete'], url_path='borrado-fisico', permission_classes=[SoloSuperadmin])
+    def borrado_fisico_endpoint(self, request, pk=None):
+        categoria = Categoria.todos_los_objetos.get(pk=pk)
+        categoria.borrado_fisico()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class MaterialViewSet(viewsets.ModelViewSet):
@@ -25,6 +36,7 @@ class MaterialViewSet(viewsets.ModelViewSet):
 
 
 class MuebleViewSet(viewsets.ModelViewSet):
+    permission_classes = [PermisoCatalogo]
     pagination_class = MueblePagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = [
