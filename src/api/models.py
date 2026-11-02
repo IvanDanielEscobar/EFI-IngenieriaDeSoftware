@@ -430,10 +430,16 @@ class Pedido(EliminadoLogicoModel):
         from datetime import timedelta
         if self.estado == self.EstadoPedido.CANCELADO or self.eliminado_logico:
             return False
-        if self.estado in [self.EstadoPedido.EN_ENVIO, self.EstadoPedido.ENTREGADO]:
+        if self.estado in [self.EstadoPedido.ENVIADO, self.EstadoPedido.ENTREGADO]:
             return False
         limite = self.fecha_creacion + timedelta(hours=horas_limite)
         return timezone.now() <= limite
+
+    def cancelar(self):
+        """Cancela el pedido: cambia el estado y realiza la baja lógica."""
+        self.estado = self.EstadoPedido.CANCELADO
+        self.eliminado_logico = True
+        self.save(update_fields=['estado', 'eliminado_logico', 'fecha_actualizacion'])
 
     def __str__(self):
         return f"Pedido #{self.numero_pedido} - {self.cliente}"
