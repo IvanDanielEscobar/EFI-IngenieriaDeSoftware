@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home & Deco | API REST Backend</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0f141c;
+            --bg-card: #18202c;
+            --bg-card-hover: #1f2a3a;
+            --border: #283548;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent: #d97706;
+            --accent-light: #f59e0b;
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.12);
+            --info: #38bdf8;
+            --info-bg: rgba(56, 189, 248, 0.12);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem;
+            flex: 1;
+        }
+
+        /* Top Header */
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .badge-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--success-bg);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--success);
+            padding: 0.4rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            letter-spacing: 0.025em;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.85); }
+        }
+
+        .brand-title {
+            font-size: 3rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #ffffff 40%, var(--accent-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.75rem;
+        }
+
+        .brand-subtitle {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            max-width: 650px;
+            margin: 0 auto;
+            font-weight: 400;
+        }
+
+        /* Documentation & Quick Access Cards */
+        .section-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            color: var(--text-main);
+        }
+
+        .grid-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 3rem;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.5rem;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: transparent;
+            transition: background 0.25s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            background-color: var(--bg-card-hover);
+            border-color: rgba(217, 119, 6, 0.4);
+            box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .card:hover::before {
+            background: linear-gradient(90deg, var(--accent), var(--accent-light));
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .card-icon {
+            font-size: 1.5rem;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .card-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+
+        .card-desc {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 1.25rem;
+            flex: 1;
+        }
+
+        .card-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .card-action svg {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.2s ease;
+        }
+
+        .card:hover .card-action svg {
+            transform: translateX(4px);
+        }
+
+        /* Technical Info Grid */
+        .info-panel {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.75rem;
+            margin-bottom: 3rem;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .info-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .tech-pill {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 0.2rem 0.55rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: var(--info);
+            font-family: monospace;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            margin-right: 0.3rem;
+            margin-bottom: 0.3rem;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 2rem 1.5rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            background-color: #0b0f15;
+        }
+
+        .footer-content {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .footer-highlight {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        @media (max-width: 640px) {
+            .brand-title {
+                font-size: 2.2rem;
+            }
+            .grid-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="badge-status">
+                <span class="status-dot"></span>
+                API REST Online • Home &amp; Deco Backend
+            </div>
+            <h1 class="brand-title">Home &amp; Deco</h1>
+            <p class="brand-subtitle">
+                Backend RESTful robusto desarrollado con Django y Django REST Framework para la gestión integral de catálogo de muebles de diseño, pedidos, sucursales y clientes.
+            </p>
+        </header>
+
+        <!-- Documentación y Herramientas -->
+        <section>
+            <h2 class="section-title">
+                <span>⚡</span> Accesos Rápidos y Documentación
+            </h2>
+            <div class="grid-cards">
+                <!-- Swagger UI -->
+                <a href="/api/docs/" class="card" target="_blank" rel="noopener noreferrer">
+                    <div>
+                        <div class="card-header">
+                            <div class="card-icon">📘</div>
+                            <h3 class="card-title">Swagger UI</h3>
+                        </div>
+                        <p class="card-desc">
+                            Explorador interactivo generado con drf-spectacular (OpenAPI 3.0).
+                        </p>
+                    </div>
+                    <div class="card-action">
+                        Abrir Swagger
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <!-- ReDoc -->
+                <a href="/api/redoc/" class="card" target="_blank" rel="noopener noreferrer">
+                    <div>
+                        <div class="card-header">
+                            <div class="card-icon">📕</div>
+                            <h3 class="card-title">ReDoc</h3>
+                        </div>
+                        <p class="card-desc">
+                            Documentación técnica estructurada y diagramada para desarrolladores e integración con clientes externos.
+                        </p>
+                    </div>
+                    <div class="card-action">
+                        Ver ReDoc
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <!-- OpenAPI Schema -->
+                <a href="/api/schema/" class="card" target="_blank" rel="noopener noreferrer">
+                    <div>
+                        <div class="card-header">
+                            <div class="card-icon">📄</div>
+                            <h3 class="card-title">OpenAPI Schema</h3>
+                        </div>
+                        <p class="card-desc">
+                            Descarga el esquema en formato YAML/JSON.
+                        </p>
+                    </div>
+                    <div class="card-action">
+                        Obtener Schema
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <!-- Django Admin -->
+                <a href="/admin/" class="card" target="_blank" rel="noopener noreferrer">
+                    <div>
+                        <div class="card-header">
+                            <div class="card-icon">⚙️</div>
+                            <h3 class="card-title">Administración</h3>
+                        </div>
+                        <p class="card-desc">
+                            Panel de control Django Admin con gestión de usuarios custom, perfiles de clientes, filtros, búsquedas y permisos.
+                        </p>
+                    </div>
+                    <div class="card-action">
+                        Ingresar al Panel
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                        </svg>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <!-- Especificacion Tecnica y Arquitectura -->
+        <section>
+            <div class="info-panel">
+                <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem;"> Arquitectura y Stack del Backend</h3>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Frameworks &amp; Core</span>
+                        <div style="margin-top: 0.35rem;">
+                            <span class="tech-pill">Django 6.1.2</span>
+                            <span class="tech-pill">DRF 3.18.3</span>
+                            <span class="tech-pill">uv</span>
+                        </div>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">API</span>
+                        <div style="margin-top: 0.35rem;">
+                            <span class="tech-pill">drf-spectacular</span>
+                            <span class="tech-pill">OpenAPI 3.0</span>
+                        </div>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">Integración a Frontend</span>
+                        <div style="margin-top: 0.35rem;">
+                            <span class="tech-pill">django-cors-headers</span>
+                            <span class="tech-pill">Next.js :3000</span>
+                        </div>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">Seguridad &amp; Auth</span>
+                        <div style="margin-top: 0.35rem;">
+                            <span class="tech-pill">Custom AbstractUser</span>
+                            <span class="tech-pill">Roles &amp; Permisos</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <p>
+                <span class="footer-highlight">Evaluación Final Integradora (EFI)</span> 
+                <span class="footer-highlight">Ingeniería de Software</span>
+            </p>
+            <p>
+                Docente: <strong>Facundo Esteban Lemo</strong> | Carrera: <strong>Tecnicatura Superior en Desarrollo de Software</strong>
+            </p>
+            <p style="margin-top: 0.25rem;">
+                Desarrollado por: <strong>Escobar Iván</strong>, <strong>Ibarra Matías</strong>, <strong>Garay Santiago</strong> y <strong>Jonatan Villavicencio</strong>
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
+

@@ -1,0 +1,17 @@
+.git
+.gitignore
+.venv
+__pycache__
+*.py[cod]
+*$py.class
+*.sqlite3
+*.sqlite3-journal
+*.db
+.env
+.env.local
+.vscode
+.idea
+*.log
+media/
+staticfiles/
+
