@@ -296,21 +296,20 @@
             </div>
             <h1 class="brand-title">Home &amp; Deco</h1>
             <p class="brand-subtitle">
-                Backend RESTful robusto desarrollado con Django y Django REST Framework para la gestión integral de catálogo de muebles de diseño, pedidos, sucursales y clientes.
+                Backend RESTful desarrollado con Django y Django REST Framework como API REST para Frontend Home & Deco E-Comerce .
             </p>
         </header>
 
         <!-- Documentación y Herramientas -->
         <section>
             <h2 class="section-title">
-                <span>⚡</span> Accesos Rápidos y Documentación
+                Documentación
             </h2>
             <div class="grid-cards">
                 <!-- Swagger UI -->
                 <a href="/api/docs/" class="card" target="_blank" rel="noopener noreferrer">
                     <div>
                         <div class="card-header">
-                            <div class="card-icon">📘</div>
                             <h3 class="card-title">Swagger UI</h3>
                         </div>
                         <p class="card-desc">
@@ -329,7 +328,6 @@
                 <a href="/api/redoc/" class="card" target="_blank" rel="noopener noreferrer">
                     <div>
                         <div class="card-header">
-                            <div class="card-icon">📕</div>
                             <h3 class="card-title">ReDoc</h3>
                         </div>
                         <p class="card-desc">
@@ -345,23 +343,27 @@
                 </a>
 
                 <!-- OpenAPI Schema -->
-                <a href="/api/schema/" class="card" target="_blank" rel="noopener noreferrer">
+                <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
                     <div>
                         <div class="card-header">
-                            <div class="card-icon">📄</div>
                             <h3 class="card-title">OpenAPI Schema</h3>
                         </div>
                         <p class="card-desc">
-                            Descarga el esquema en formato YAML/JSON.
+                            Especificación completa OpenAPI 3.0 en formato estructurado para herramientas y clientes HTTP.
                         </p>
                     </div>
-                    <div class="card-action">
-                        Obtener Schema
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                        </svg>
+                    <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1rem;">
+                        <a href="/api/schema/json/" class="card-action" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 8px; padding: 0.55rem 0.8rem; justify-content: center; color: var(--accent-light); font-weight: 600;" target="_blank" rel="noopener noreferrer">
+                            Ver Esquema en JSON
+                        </a>
+                        <div style="display: flex; gap: 0.5rem;">
+
+                            <a href="/api/schema/json/" class="card-action" style="flex: 1; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 8px; padding: 0.45rem 0.6rem; justify-content: center; font-size: 0.8rem; color: var(--text-muted);" target="_blank" rel="noopener noreferrer" download="schema.json">
+                                Descargar JSON
+                            </a>
+                        </div>
                     </div>
-                </a>
+                </div>
 
                 <!-- Django Admin -->
                 <a href="/admin/" class="card" target="_blank" rel="noopener noreferrer">
@@ -371,7 +373,7 @@
                             <h3 class="card-title">Administración</h3>
                         </div>
                         <p class="card-desc">
-                            Panel de control Django Admin con gestión de usuarios custom, perfiles de clientes, filtros, búsquedas y permisos.
+                            Panel de control Django Admin.
                         </p>
                     </div>
                     <div class="card-action">
@@ -404,6 +406,8 @@
                         <div style="margin-top: 0.35rem;">
                             <span class="tech-pill">drf-spectacular</span>
                             <span class="tech-pill">OpenAPI 3.0</span>
+                            <span class="tech-pill">API REST Home &amp; Deco</span>
+                            
                         </div>
                     </div>
 

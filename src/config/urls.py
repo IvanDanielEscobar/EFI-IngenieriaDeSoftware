@@ -6,12 +6,15 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
+from drf_spectacular.renderers import OpenApiJsonRenderer
 from django.conf import settings
 from django.conf.urls.static import static
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+
+class StandardOpenApiJsonRenderer(OpenApiJsonRenderer):
+    media_type = 'application/json'
+
+class SpectacularJSONAPIView(SpectacularAPIView):
+    renderer_classes = [StandardOpenApiJsonRenderer]
 
 urlpatterns = [
     path('', TemplateView.as_view(template_name='bienvenida.html'), name='bienvenida'),
@@ -19,10 +22,10 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls')),
     path('api/', include('api.urls')),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/schema/yaml/', SpectacularAPIView.as_view(), name='schema-yaml'),
+    path('api/schema/json/', SpectacularJSONAPIView.as_view(), name='schema-json'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema-json'), name='swagger-ui'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema-json'), name='redoc'),
 ]
 
 if settings.DEBUG:
