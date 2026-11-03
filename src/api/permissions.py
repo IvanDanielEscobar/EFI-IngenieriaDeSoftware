@@ -56,3 +56,10 @@ class IsMayorista(BasePermission):
             return True
         perfil = getattr(request.user, 'perfil_cliente', None)
         return bool(perfil and perfil.es_mayorista)
+
+class SoloSuperadmin(BasePermission):
+    """Permite acceso exclusivamente al Superadministrador."""
+    message = "Acceso restringido: Solo el superadministrador puede realizar esta acción."
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.is_superuser)

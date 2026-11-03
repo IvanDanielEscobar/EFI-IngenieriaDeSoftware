@@ -31,8 +31,8 @@ from .serializers import (
     DetallePedidoSerializer,
     DetallePedidoListSerializer,
 )
-from .permissions import IsEmpleadoOrPublicReadOnly, IsEmpleado
-from .pagination import MueblePagination, StandardResultsSetPagination
+from .permissions import IsEmpleadoOrPublicReadOnly, IsEmpleado, SoloSuperadmin
+from .pagination import StandardResultsSetPagination
 
 
 class EliminadoLogicoDestroyMixin:
@@ -81,7 +81,7 @@ class MaterialViewSet(EliminadoLogicoDestroyMixin, viewsets.ModelViewSet):
 
 
 class MuebleViewSet(EliminadoLogicoDestroyMixin, viewsets.ModelViewSet):
-    pagination_class = MueblePagination
+    pagination_class = StandardResultsSetPagination
     permission_classes = [IsEmpleadoOrPublicReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = [
