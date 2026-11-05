@@ -41,8 +41,6 @@ erDiagram
     Mueble ||--|| Caracteristicas : "ficha_tecnica (1:1)"
     Categoria ||--o{ Mueble : "clasifica (1:N)"
     Material ||--o{ Mueble : "compone (1:N)"
-
-    Usuario, Cliente, Categoria, Material, Mueble, Caracteristicas, Sucursal, MetodoPago, Pedido, DetallePedido
 ```
 
 ---
@@ -150,7 +148,7 @@ docker compose logs -f backend
 
 ---
 
-## 🧪 7. Pruebas Automatizadas(test)
+## 🧪 7. Pruebas Automatizadas (Tests)
 
 El proyecto cuenta con suite de pruebas unitarias y de integración que validan los modelos, reglas de negocio de cancelación y autenticación:
 
@@ -161,7 +159,49 @@ uv run python manage.py test api
 
 ---
 
-## 👥 8. Integrantes del Equipo
+## 📸 8. Capturas del Proyecto en Funcionamiento (Producción)
+
+El sistema se encuentra desplegado y operativo en la nube:
+> **URL Producción:** [https://homedeco-backend.onrender.com](https://homedeco-backend.onrender.com)
+
+### 1. Vista de Bienvenida (Landing Page)
+Interfaz principal que da la bienvenida al sistema y provee accesos rápidos a la documentación interactiva, especificaciones OpenAPI y panel de administración:
+
+<p align="center">
+  <img src="docs/01-landing-bienvenida.png" alt="Landing Page de Bienvenida - Home & Deco" width="900"/>
+</p>
+
+### 2. Autenticación SimpleJWT en Swagger UI
+Generación de tokens de acceso (`access`) y actualización (`refresh`) mediante `POST /api/token/` con respuesta HTTP 200 OK:
+
+<p align="center">
+  <img src="docs/02-swagger-auth.jpg" alt="Swagger UI - Token JWT 200 OK" width="900"/>
+</p>
+
+### 3. Acceso Seguro al Panel de Administración
+Pantalla de inicio de sesión de Django Admin (`/admin/login/`) protegida por credenciales de usuario con privilegios de staff:
+
+<p align="center">
+  <img src="docs/03-admin-login.png" alt="Django Admin Login" width="900"/>
+</p>
+
+### 4. Panel de Control y Administración de Modelos
+Visión global del panel con los 10 modelos administrables clasificados por módulos de negocio (Catálogo, Clientes, Transacciones, Usuarios):
+
+<p align="center">
+  <img src="docs/04-admin-dashboard.png" alt="Dashboard de Administración Django" width="900"/>
+</p>
+
+### 5. Control de Pedidos con Filtros Avanzados
+Gestión integral de transacciones de compra con barra lateral de filtrado por estado (`Pendiente`, `Pagado`, `En Preparación`, etc.), método de pago, baja lógica y fechas:
+
+<p align="center">
+  <img src="docs/05-admin-pedidos.png" alt="Gestión de Pedidos en Django Admin con Filtros" width="900"/>
+</p>
+
+---
+
+## 👥 9. Integrantes del Equipo
 * **Ivan Daniel Escobar**
 * **Matias Ibarra**
 * **Santiago Garay**
