@@ -6,7 +6,8 @@ from django.core.validators import MinValueValidator
 
 class Usuario(AbstractUser):
     class Rol(models.TextChoices):
-        EMPLEADO= 'EMPLEADO', 'Empleado'
+        ADMIN = 'ADMIN', 'Administrador'
+        EMPLEADO = 'EMPLEADO', 'Empleado'
         CLIENTE = 'CLIENTE', 'Cliente'
 
     rol = models.CharField(
@@ -16,8 +17,20 @@ class Usuario(AbstractUser):
         help_text="Define el rol y permisos operativos del usuario en el sistema."
     )
     
+    def es_admin(self):
+        return self.rol == self.Rol.ADMIN or self.is_superuser
+
     def es_empleado(self):
-        return self.rol == self.Rol.EMPLEADO or self.is_superuser
+        return self.rol in [self.Rol.EMPLEADO, self.Rol.ADMIN] or self.is_superuser
+
+    def save(self, *args, **kwargs):
+        # Si es superusuario y su rol es el predeterminado CLIENTE, asociar a ADMIN
+        if self.is_superuser and self.rol == self.Rol.CLIENTE:
+            self.rol = self.Rol.ADMIN
+        # Si tiene rol ADMIN, otorgar is_staff para acceso administrativo
+        if self.rol == self.Rol.ADMIN:
+            self.is_staff = True
+        super().save(*args, **kwargs)
     
     def __str__(self):
         return f"{self.username} ({self.get_rol_display()})"

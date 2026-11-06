@@ -5,6 +5,8 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from .views import (
+    UsuarioViewSet,
+    RegistroClienteView,
     MuebleViewSet,
     CategoriaViewSet,
     MaterialViewSet,
@@ -17,6 +19,7 @@ from .views import (
 )
 
 router = DefaultRouter()
+router.register(r'usuarios', UsuarioViewSet, basename='usuario')
 router.register(r'muebles', MuebleViewSet, basename='mueble')
 router.register(r'categorias', CategoriaViewSet, basename='categoria')
 router.register(r'materiales', MaterialViewSet, basename='material')
@@ -31,6 +34,10 @@ urlpatterns = [
     # Endpoints de Autenticación SimpleJWT
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    # Registro público de clientes (Self-registration para el frontend)
+    path('registro/', RegistroClienteView.as_view(), name='registro_cliente'),
+    path('auth/registro/', RegistroClienteView.as_view(), name='auth_registro_cliente'),
 
     # Enrutamiento de ViewSets
     path('', include(router.urls)),
