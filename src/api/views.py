@@ -1,12 +1,15 @@
 from rest_framework import viewsets, filters, status
+from rest_framework.views import APIView
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from drf_spectacular.utils import extend_schema
 from django.db.models import Sum, Q, Value, IntegerField
 from django.db.models.functions import Coalesce
 
 from .models import (
+    Usuario,
     Categoria,
     Material,
     Mueble,
@@ -18,6 +21,8 @@ from .models import (
     DetallePedido,
 )
 from .serializers import (
+    UsuarioSerializer,
+    RegistroClienteSerializer,
     CategoriaSerializer,
     MaterialSerializer,
     MuebleSerializer,
@@ -31,7 +36,7 @@ from .serializers import (
     DetallePedidoSerializer,
     DetallePedidoListSerializer,
 )
-from .permissions import IsEmpleadoOrPublicReadOnly, IsEmpleado, SoloSuperadmin
+from .permissions import IsEmpleadoOrPublicReadOnly, IsEmpleado, IsAdmin, SoloSuperadmin
 from .pagination import StandardResultsSetPagination
 
 
@@ -215,6 +220,76 @@ class ClienteViewSet(viewsets.ModelViewSet):
     ]
     ordering_fields = ['fecha_creacion', 'usuario__username', 'dni_cuit']
     ordering = ['-fecha_creacion']
+
+
+class RegistroClienteView(APIView):
+    """
+    Endpoint público para que cualquier cliente se registre directamente desde la tienda web.
+    Crea el usuario con rol CLIENTE y su perfil comercial, devolviendo los tokens JWT para login inmediato.
+    """
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        request=RegistroClienteSerializer,
+        responses={201: RegistroClienteSerializer},
+        description="Registra un nuevo cliente con credenciales de usuario y perfil comercial, retornando tokens JWT."
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = RegistroClienteSerializer(data=request.data)
+        if serializer.is_valid():
+            usuario = serializer.save()
+            return Response(
+                {
+                    "mensaje": "Cliente registrado exitosamente.",
+                    "usuario": {
+                        "id": usuario.id,
+                        "username": usuario.username,
+                        "email": usuario.email,
+                        "rol": usuario.rol,
+                        "cliente_id": getattr(usuario, 'perfil_cliente', None).id if hasattr(usuario, 'perfil_cliente') else None,
+                    },
+                    "tokens": serializer.get_tokens(usuario),
+                },
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UsuarioViewSet(viewsets.ModelViewSet):
+    """
+    Gestión administrativa de usuarios del sistema (Superadministradores y Administradores).
+    Permite dar de alta usuarios y asignarles roles (ADMIN, EMPLEADO, CLIENTE).
+    - Un Administrador solo puede realizar baja lógica/desactivación y no puede modificar superusuarios.
+    - Incluye endpoint /api/usuarios/perfil/ para que el usuario autenticado consulte sus propios datos.
+    """
+    queryset = Usuario.objects.all().select_related('perfil_cliente').order_by('id')
+    serializer_class = UsuarioSerializer
+    permission_classes = [IsAdmin]
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = [
+        'username',
+        'email',
+        'first_name',
+        'last_name',
+        'rol',
+        'perfil_cliente__dni_cuit',
+    ]
+    ordering_fields = ['id', 'username', 'email', 'rol', 'date_joined']
+    ordering = ['id']
+
+    @action(detail=False, methods=['get'], url_path='perfil', permission_classes=[IsAuthenticated])
+    def perfil(self, request):
+        """Devuelve los datos del usuario autenticado actual y su perfil comercial si existe."""
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
+
+    def perform_destroy(self, instance):
+        if instance.is_superuser and not self.request.user.is_superuser:
+            raise PermissionDenied("Solo un superadministrador puede desactivar a otro superadministrador.")
+        # Baja lógica: desactiva el acceso en lugar de borrar registros históricos
+        instance.is_active = False
+        instance.save(update_fields=['is_active'])
 
 
 class CaracteristicasViewSet(viewsets.ModelViewSet):

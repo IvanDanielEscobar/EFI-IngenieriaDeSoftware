@@ -229,3 +229,174 @@ class CatalogoPermisosYAuthTests(APITestCase):
         self.client.logout()
         res_post_logout = self.client.post(self.url_categorias, {'nombre': 'Intento post logout'})
         self.assertEqual(res_post_logout.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class RegistroYRolesUsuariosTests(APITestCase):
+    """
+    Pruebas automatizadas para el registro de clientes, creación de usuarios por rol
+    y restricciones de administradores sin borrado físico.
+    """
+
+    def setUp(self):
+        # Superadministrador
+        self.superadmin = Usuario.objects.create_superuser(
+            username='test_superadmin',
+            email='super@test.com',
+            password='password123',
+            rol=Usuario.Rol.ADMIN
+        )
+
+        # Administrador (rol ADMIN, sin is_superuser)
+        self.admin_operativo = Usuario.objects.create_user(
+            username='test_admin',
+            email='admin_op@test.com',
+            password='password123',
+            rol=Usuario.Rol.ADMIN,
+            is_staff=True,
+            is_superuser=False
+        )
+
+        # Empleado
+        self.empleado = Usuario.objects.create_user(
+            username='test_empleado',
+            email='empleado_op@test.com',
+            password='password123',
+            rol=Usuario.Rol.EMPLEADO,
+            is_staff=True,
+            is_superuser=False
+        )
+
+        # Cliente
+        self.cliente_user = Usuario.objects.create_user(
+            username='test_cliente',
+            email='cliente_op@test.com',
+            password='password123',
+            rol=Usuario.Rol.CLIENTE
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.cliente_user,
+            dni_cuit='20-44555666-7',
+            telefono='0358-4561234',
+            direccion='Colón 150',
+            es_mayorista=False
+        )
+
+        self.url_registro = reverse('registro_cliente')
+        self.url_usuarios = reverse('usuario-list')
+        self.url_clientes = reverse('cliente-list')
+
+    def test_registro_publico_cliente_exitoso(self):
+        """Un visitante anónimo puede registrarse como cliente desde la tienda web."""
+        payload = {
+            'username': 'nuevo_cliente_web',
+            'email': 'nuevo_cliente@test.com',
+            'password': 'PasswordValida123!',
+            'first_name': 'Camila',
+            'last_name': 'Torres',
+            'dni_cuit': '27-38999888-4',
+            'telefono': '0358-154998877',
+            'direccion': 'San Martín 500',
+            'es_mayorista': False,
+        }
+        res = self.client.post(self.url_registro, payload)
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertIn('tokens', res.data)
+        self.assertIn('access', res.data['tokens'])
+        self.assertEqual(res.data['usuario']['username'], 'nuevo_cliente_web')
+        self.assertEqual(res.data['usuario']['rol'], 'CLIENTE')
+
+        # Comprobar que se crearon Usuario y Cliente
+        self.assertTrue(Usuario.objects.filter(username='nuevo_cliente_web').exists())
+        self.assertTrue(Cliente.objects.filter(dni_cuit='27-38999888-4').exists())
+
+    def test_registro_cliente_dni_duplicado_falla(self):
+        """No permite registrar un cliente con DNI/CUIT existente."""
+        payload = {
+            'username': 'otro_cliente',
+            'email': 'otro@test.com',
+            'password': 'PasswordValida123!',
+            'dni_cuit': '20-44555666-7',  # Ya existente
+        }
+        res = self.client.post(self.url_registro, payload)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('dni_cuit', res.data)
+
+    def test_empleado_puede_crear_cliente(self):
+        """Un empleado puede registrar un nuevo cliente en el sistema."""
+        self.client.force_authenticate(user=self.empleado)
+        payload = {
+            'username': 'cliente_creado_por_empleado',
+            'password': 'PasswordValida123!',
+            'email': 'cliente_creado@test.com',
+            'first_name': 'Lucía',
+            'last_name': 'Méndez',
+            'dni_cuit': '27-35111333-9',
+            'telefono': '0358-4632145',
+            'direccion': 'Alvear 890',
+            'es_mayorista': True,
+        }
+        res = self.client.post(self.url_clientes, payload)
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data['dni_cuit'], '27-35111333-9')
+        self.assertEqual(res.data['usuario_username'], 'cliente_creado_por_empleado')
+
+    def test_cliente_no_puede_crear_otros_clientes(self):
+        """Un cliente común no tiene permisos para dar de alta clientes por la API administrativa."""
+        self.client.force_authenticate(user=self.cliente_user)
+        res = self.client.post(self.url_clientes, {'dni_cuit': '20-99888777-1'})
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_superadmin_o_admin_crea_empleado(self):
+        """Un administrador puede crear un usuario y otorgarle rol de EMPLEADO."""
+        self.client.force_authenticate(user=self.admin_operativo)
+        payload = {
+            'username': 'nuevo_vendedor_sucursal',
+            'email': 'vendedor_nuevo@homedeco.com',
+            'password': 'PasswordValida123!',
+            'first_name': 'Esteban',
+            'last_name': 'Quito',
+            'rol': 'EMPLEADO',
+        }
+        res = self.client.post(self.url_usuarios, payload)
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data['rol'], 'EMPLEADO')
+        self.assertTrue(res.data['is_staff'])
+
+        creado = Usuario.objects.get(username='nuevo_vendedor_sucursal')
+        self.assertEqual(creado.rol, Usuario.Rol.EMPLEADO)
+        self.assertTrue(creado.es_empleado())
+
+    def test_empleado_no_puede_gestionar_usuarios(self):
+        """Un empleado común no tiene acceso al endpoint de gestión de usuarios."""
+        self.client.force_authenticate(user=self.empleado)
+        res = self.client.get(self.url_usuarios)
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_no_puede_hacer_borrado_fisico(self):
+        """Un usuario con rol ADMIN puede hacer baja lógica pero NO borrado físico."""
+        cat = Categoria.objects.create(nombre='Cat Para Prueba Admin Borrado')
+        url_borrado_fisico = reverse('categoria-borrado-fisico-endpoint', args=[cat.id])
+        url_borrado_logico = reverse('categoria-detail', args=[cat.id])
+
+        self.client.force_authenticate(user=self.admin_operativo)
+
+        # 1. Borrado físico denegado para ADMIN no superuser
+        res_fisico = self.client.delete(url_borrado_fisico)
+        self.assertEqual(res_fisico.status_code, status.HTTP_403_FORBIDDEN)
+
+        # 2. Borrado lógico estándar permitido
+        res_logico = self.client.delete(url_borrado_logico)
+        self.assertEqual(res_logico.status_code, status.HTTP_204_NO_CONTENT)
+
+        cat.refresh_from_db()
+        self.assertTrue(cat.eliminado_logico)
+
+    def test_usuario_puede_consultar_su_propio_perfil(self):
+        """Cualquier usuario autenticado puede consultar su propio perfil en /api/usuarios/perfil/."""
+        url_perfil = reverse('usuario-perfil')
+        self.client.force_authenticate(user=self.cliente_user)
+        res = self.client.get(url_perfil)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['username'], 'test_cliente')
+        self.assertIsNotNone(res.data['cliente'])
+        self.assertEqual(res.data['cliente']['dni_cuit'], '20-44555666-7')
