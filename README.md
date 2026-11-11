@@ -77,15 +77,6 @@ erDiagram
 
 ## 📑 4. Documentación de la API & Vistas
 
-### 📐 Diagrama Entidad-Relación (Draw.io)
-Planificación inicial de tablas, atributos y relaciones desarrollada en [Draw.io](https://app.diagrams.net/):
-
-<p align="center">
-  <img src="docs/diagrama-der.jpg" alt="Diagrama de Base de Datos - Home & Deco Draw.io" width="850"/>
-</p>
-
----
-
 ### 🌐 Endpoints de Documentación & Vistas
 * **Página de Bienvenida:** Renderizada en `/` con diseño responsive, métricas del servicio y accesos directos.
 * **Swagger UI:** Disponible en [`/api/docs/`](http://127.0.0.1:8000/api/docs/) con soporte de autorización Bearer JWT persistente.
@@ -162,37 +153,65 @@ uv run python manage.py test api
 ## 📸 8. Capturas del Proyecto en Funcionamiento (Producción)
 
 El sistema se encuentra desplegado y operativo en la nube:
-> **URL Producción:** [https://homedeco-backend.onrender.com](https://homedeco-backend.onrender.com)
+> **URL Producción:** [https://homedeco-backend.onrender.com](https://homedeco-backend.onrender.com)  
+> **Frontend Integrado (Vercel):** [https://efi-programacion-iii.vercel.app](https://efi-programacion-iii.vercel.app)
 
-### 1. Vista de Bienvenida (Landing Page)
+### A. Despliegue en la Nube (Render + Supabase + uv)
+
+#### 1. Configuración del Servicio Web en Render
+Alta del servicio web vinculado al repositorio en GitHub (`IvanDanielEscobar/EFI-IngenieriaDeSoftware`), rama `main` y entorno de ejecución optimizado:
+
+<p align="center">
+  <img src="docs/06-render-creacion-servicio.png" alt="Creación del Web Service en Render" width="900"/>
+</p>
+
+#### 2. Configuración de Build & Start con uv
+Comandos automatizados de instalación determinista de dependencias congeladas (`uv sync --frozen`) y ejecución del servidor WSGI mediante Gunicorn:
+
+<p align="center">
+  <img src="docs/07-render-configuracion-uv.jpg" alt="Comandos de Build y Start con uv en Render" width="900"/>
+</p>
+
+#### 3. Despliegue Exitoso en Vivo (Logs de Producción)
+Evidencia del servicio en estado `Live`, escuchando en el puerto asignado y respondiendo peticiones HTTP 200 OK:
+
+<p align="center">
+  <img src="docs/08-render-deploy-exitoso.jpg" alt="Deploy Succeeded Live en Render" width="900"/>
+</p>
+
+---
+
+### B. Interfaz, Documentación y Operación del Sistema
+
+#### 4. Vista de Bienvenida (Landing Page)
 Interfaz principal que da la bienvenida al sistema y provee accesos rápidos a la documentación interactiva, especificaciones OpenAPI y panel de administración:
 
 <p align="center">
   <img src="docs/01-landing-bienvenida.png" alt="Landing Page de Bienvenida - Home & Deco" width="900"/>
 </p>
 
-### 2. Autenticación SimpleJWT en Swagger UI
+#### 5. Autenticación SimpleJWT en Swagger UI
 Generación de tokens de acceso (`access`) y actualización (`refresh`) mediante `POST /api/token/` con respuesta HTTP 200 OK:
 
 <p align="center">
   <img src="docs/02-swagger-auth.jpg" alt="Swagger UI - Token JWT 200 OK" width="900"/>
 </p>
 
-### 3. Acceso Seguro al Panel de Administración
+#### 6. Acceso Seguro al Panel de Administración
 Pantalla de inicio de sesión de Django Admin (`/admin/login/`) protegida por credenciales de usuario con privilegios de staff:
 
 <p align="center">
   <img src="docs/03-admin-login.png" alt="Django Admin Login" width="900"/>
 </p>
 
-### 4. Panel de Control y Administración de Modelos
+#### 7. Panel de Control y Administración de Modelos
 Visión global del panel con los 10 modelos administrables clasificados por módulos de negocio (Catálogo, Clientes, Transacciones, Usuarios):
 
 <p align="center">
   <img src="docs/04-admin-dashboard.png" alt="Dashboard de Administración Django" width="900"/>
 </p>
 
-### 5. Control de Pedidos con Filtros Avanzados
+#### 8. Control de Pedidos con Filtros Avanzados
 Gestión integral de transacciones de compra con barra lateral de filtrado por estado (`Pendiente`, `Pagado`, `En Preparación`, etc.), método de pago, baja lógica y fechas:
 
 <p align="center">
